@@ -1,3 +1,5 @@
+"""The receiver of the app: recognising and decoding packets, byte streams, the filter of the watched display, log and settings."""
+
 import socket
 import time
 

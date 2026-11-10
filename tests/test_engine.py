@@ -1,3 +1,5 @@
+"""The sender of the app: sending over UDP and TCP, send on change, interval, clock, validation and saved settings."""
+
 import socket
 import threading
 from datetime import datetime

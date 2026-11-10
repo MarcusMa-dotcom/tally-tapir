@@ -1,3 +1,5 @@
+"""The access settings: salted password hashes, the private settings file, rules for names and passwords, login throttle."""
+
 import json
 import os
 import stat

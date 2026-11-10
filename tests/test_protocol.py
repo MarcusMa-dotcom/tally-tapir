@@ -1,3 +1,5 @@
+"""The packets the app builds: bytes of V3.1, V4.0 and V5.0, checksum, byte count, wrapper and hex output."""
+
 import pytest
 
 from tallytapir_app import protocol as p

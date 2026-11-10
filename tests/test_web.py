@@ -1,3 +1,5 @@
+"""The web server: web page, REST API, switches, logins, session cookie and the guards against requests from elsewhere."""
+
 import base64
 import socket
 import time
