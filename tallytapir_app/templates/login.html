@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tally Tapir login</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body>
+  <header class="bar">
+    <h1 class="brand"><img src="{{ url_for('static', filename='logo.png') }}" alt="" width="30" height="30">Tally Tapir <span class="version">{{ version }}</span></h1>
+  </header>
+  <main class="login">
+    <form class="panel" id="login-form">
+      <h2>Log in</h2>
+      <label class="block">User name
+        <input id="login-user" type="text" maxlength="64" autocomplete="username" spellcheck="false" required>
+      </label>
+      <label class="block">Password
+        <input id="login-password" type="password" maxlength="128" autocomplete="current-password" required>
+      </label>
+      <div class="actions">
+        <button type="submit" class="primary">Log in</button>
+      </div>
+      <p id="login-error" class="error" role="alert"></p>
+    </form>
+  </main>
+  <script src="{{ url_for('static', filename='login.js') }}"></script>
+</body>
+</html>

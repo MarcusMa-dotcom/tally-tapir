@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tally-tapir"
+dynamic = ["version"]
+description = "Tally Tapir sends and receives TSL UMD tally packets (V3.1, V4.0, V5.0) for testing: desktop window, web interface and REST API."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Marcus Mathy" }]
+keywords = ["tsl", "umd", "tally", "broadcast"]
+dependencies = [
+    "flask>=3.0",
+    "pyserial>=3.5",
+    # The library comes straight from its repository at a fixed tag, never by name from a package index.
+    "tallytapir @ git+https://github.com/MarcusMa-dotcom/tally-tapir-lib@v0.1.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.urls]
+Homepage = "https://github.com/MarcusMa-dotcom/tally-tapir"
+Library = "https://github.com/MarcusMa-dotcom/tally-tapir-lib"
+
+[project.scripts]
+tally-tapir = "tallytapir_app.__main__:main"
+
+[tool.setuptools]
+packages = ["tallytapir_app"]
+
+[tool.setuptools.dynamic]
+version = { attr = "tallytapir_app.__version__" }
+
+[tool.setuptools.package-data]
+tallytapir_app = ["templates/*.html", "static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

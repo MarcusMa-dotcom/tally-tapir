@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tally Tapir</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body>
+  <header class="bar">
+    <h1 class="brand"><img src="{{ url_for('static', filename='logo.png') }}" alt="" width="30" height="30">Tally Tapir <span class="version">{{ version }}</span></h1>
+    <nav class="tabs" aria-label="Views">
+      <button type="button" id="tab-send" aria-pressed="true">Send</button>
+      <button type="button" id="tab-receive" aria-pressed="false">Receive</button>
+      <button type="button" id="tab-settings" aria-pressed="false">Settings</button>
+      <button type="button" id="tab-about" aria-pressed="false">About</button>
+      <button type="button" id="logout" class="quiet" hidden>Log out</button>
+    </nav>
+    <p class="states">
+      <span id="conn-state" class="state" aria-live="polite">Disconnected</span>
+      <span id="rx-state" class="state" aria-live="polite">Not listening</span>
+    </p>
+  </header>
+
+  <p id="notice" class="notice" role="alert" hidden></p>
+
+  <main>
+  <div class="grid" id="view-send">
+    <section class="panel">
+      <h2>Connection</h2>
+      <fieldset class="choice">
+        <legend>Transport</legend>
+        {% for key, label in transports.items() %}
+        <label><input type="radio" name="transport" value="{{ key }}"> {{ label }}</label>
+        {% endfor %}
+      </fieldset>
+
+      <div class="fields" id="ip-fields">
+        <label class="grow">Host
+          <input id="host" type="text" autocomplete="off" spellcheck="false">
+        </label>
+        <label>Port
+          <input id="port" type="number" min="1" max="65535">
+        </label>
+      </div>
+
+      <div id="serial-fields" hidden>
+        <div class="fields">
+          <label class="grow">Serial port
+            <select id="serial_port"></select>
+          </label>
+          <button type="button" id="refresh-ports" class="quiet">Refresh</button>
+        </div>
+        <div class="fields">
+          <label>Baud rate
+            <select id="baudrate">
+              {% for value in baudrates %}<option value="{{ value }}">{{ value }}</option>{% endfor %}
+            </select>
+          </label>
+          <label>Data bits
+            <select id="bytesize">
+              {% for value in bytesizes %}<option value="{{ value }}">{{ value }}</option>{% endfor %}
+            </select>
+          </label>
+          <label>Parity
+            <select id="parity">
+              {% for key, label in parities.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+            </select>
+          </label>
+          <label>Stop bits
+            <select id="stopbits">
+              {% for value in stopbits %}<option value="{{ value }}">{{ value }}</option>{% endfor %}
+            </select>
+          </label>
+        </div>
+        <p id="serial-note" class="hint" hidden>Serial needs the pyserial package on the machine running Tally Tapir.</p>
+      </div>
+
+      <div class="actions">
+        <button type="button" id="connect" class="primary">Connect</button>
+      </div>
+      <p id="error" class="error" aria-live="polite"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Protocol</h2>
+      <fieldset class="choice">
+        <legend>Version</legend>
+        {% for key, label in protocols.items() %}
+        <label><input type="radio" name="protocol" value="{{ key }}"> {{ label }}</label>
+        {% endfor %}
+      </fieldset>
+      <div class="fields">
+        <label>UMD ID
+          <input id="umd_id" type="number" min="0" max="65535">
+        </label>
+        <label id="screen-field">Screen
+          <input id="screen" type="number" min="0" max="65535">
+        </label>
+      </div>
+      <p id="protocol-hint" class="hint"></p>
+    </section>
+
+    <section class="panel">
+      <h2>UMD text</h2>
+      <label class="block">Text
+        <input id="text" type="text" maxlength="{{ max_text }}" autocomplete="off" spellcheck="false">
+      </label>
+      <div class="checks">
+        <label id="utf16-field"><input id="utf16" type="checkbox"> UTF-16LE</label>
+        <label><input id="clock" type="checkbox"> Clock</label>
+        <label><input id="clock_tenths" type="checkbox"> 1/10 s</label>
+      </div>
+      <label class="block">Brightness <output id="brightness-value" for="brightness">3</output>
+        <input id="brightness" type="range" min="0" max="3" step="1">
+      </label>
+    </section>
+
+    <section class="panel">
+      <h2>Tally</h2>
+      <div class="tally-groups">
+        <fieldset class="choice">
+          <legend>Right lamp</legend>
+          <label><input type="checkbox" class="tally" data-bit="0"> 1</label>
+          <label><input type="checkbox" class="tally" data-bit="1"> 2</label>
+        </fieldset>
+        <fieldset class="choice" id="tally-text-group">
+          <legend>Text</legend>
+          <label><input type="checkbox" class="tally" data-bit="2"> 3</label>
+          <label><input type="checkbox" class="tally" data-bit="3"> 4</label>
+        </fieldset>
+        <fieldset class="choice">
+          <legend>Left lamp</legend>
+          <label><input type="checkbox" class="tally" data-bit="4"> 5</label>
+          <label><input type="checkbox" class="tally" data-bit="5"> 6</label>
+        </fieldset>
+      </div>
+      <div class="umd" aria-label="Preview of the lamps as sent">
+        <span class="lamp" id="lamp-lh"><span class="dot"></span>Left: <b>off</b></span>
+        <span class="lamp" id="lamp-txt"><span class="dot"></span>Text: <b>off</b></span>
+        <span class="lamp" id="lamp-rh"><span class="dot"></span>Right: <b>off</b></span>
+      </div>
+      <p id="tally-hint" class="hint"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Transmit</h2>
+      <div class="actions">
+        <button type="button" id="send" class="primary">Send</button>
+      </div>
+      <div class="fields">
+        <label>Tx interval (ms)
+          <input id="interval_ms" type="number" min="{{ min_interval }}" max="{{ max_interval }}">
+        </label>
+      </div>
+      <div class="checks">
+        <label><input id="interval_enabled" type="checkbox"> Enable interval</label>
+        <label><input id="tally_toggle" type="checkbox"> Tally toggle</label>
+        <label><input id="send_on_change" type="checkbox"> Send on change</label>
+      </div>
+      <p class="hint" id="sent-info">Sent: 0 packets. Last: never</p>
+    </section>
+
+    <section class="panel wide">
+      <h2>Packet</h2>
+      <pre id="packet-hex" class="hex" aria-label="Current packet as hex bytes"></pre>
+      <div class="checks">
+        <span id="packet-length">0 bytes</span>
+        <label><input id="hex_braces" type="checkbox"> {} format</label>
+      </div>
+      <h3>Recently sent</h3>
+      <ol id="log" class="log"></ol>
+    </section>
+  </div>
+
+  <div class="grid" id="view-receive" hidden>
+    <section class="panel">
+      <h2>Listen</h2>
+      <fieldset class="choice">
+        <legend>Transport</legend>
+        {% for key, label in transports.items() %}
+        <label><input type="radio" name="rx_transport" value="{{ key }}"> {{ label }}</label>
+        {% endfor %}
+      </fieldset>
+
+      <div class="fields" id="rx-ip-fields">
+        <label class="grow">Listen address
+          <input id="rx_bind" type="text" autocomplete="off" spellcheck="false">
+        </label>
+        <label>Port
+          <input id="rx_port" type="number" min="1" max="65535">
+        </label>
+      </div>
+
+      <div id="rx-serial-fields" hidden>
+        <div class="fields">
+          <label class="grow">Serial port
+            <select id="rx_serial_port"></select>
+          </label>
+          <button type="button" id="rx-refresh-ports" class="quiet">Refresh</button>
+        </div>
+        <div class="fields">
+          <label>Baud rate
+            <select id="rx_baudrate">
+              {% for value in baudrates %}<option value="{{ value }}">{{ value }}</option>{% endfor %}
+            </select>
+          </label>
+          <label>Data bits
+            <select id="rx_bytesize">
+              {% for value in bytesizes %}<option value="{{ value }}">{{ value }}</option>{% endfor %}
+            </select>
+          </label>
+          <label>Parity
+            <select id="rx_parity">
+              {% for key, label in parities.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+            </select>
+          </label>
+          <label>Stop bits
+            <select id="rx_stopbits">
+              {% for value in stopbits %}<option value="{{ value }}">{{ value }}</option>{% endfor %}
+            </select>
+          </label>
+        </div>
+        <p id="rx-serial-note" class="hint" hidden>Serial needs the pyserial package on the machine running Tally Tapir.</p>
+      </div>
+
+      <div class="fields">
+        <label>Protocol
+          <select id="rx_protocol">
+            {% for key, label in rx_protocols.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+          </select>
+        </label>
+      </div>
+      <p class="hint">Auto recognises the version of each packet. 0.0.0.0 listens on all network interfaces, 127.0.0.1 only on this machine.</p>
+
+      <div class="actions">
+        <button type="button" id="rx-listen" class="primary">Listen</button>
+      </div>
+      <p id="rx-error" class="error" aria-live="polite"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Watched display</h2>
+      <div class="fields">
+        <label>Screen
+          <input id="rx_watch_screen" type="number" min="0" max="65535" placeholder="any">
+        </label>
+        <label>UMD ID
+          <input id="rx_watch_id" type="number" min="0" max="65535" placeholder="any">
+        </label>
+      </div>
+      <p class="hint">The display below only follows packets for this screen and UMD ID. Leave a field empty for any. Screen applies to V5.0 only, and the V5.0 broadcast address 65535 always matches.</p>
+      <div class="umd-display" id="rx-display" aria-label="Watched display">
+        <span class="umd-lamp" id="rx-lamp-lh"></span>
+        <span class="umd-text" id="rx-text"></span>
+        <span class="umd-lamp" id="rx-lamp-rh"></span>
+      </div>
+      <p id="rx-display-info" class="hint" aria-live="polite">Nothing received for this filter yet.</p>
+    </section>
+
+    <section class="panel wide">
+      <h2>Displays seen</h2>
+      <div class="table-wrap">
+        <table id="rx-displays">
+          <thead>
+            <tr>
+              <th scope="col">Screen</th>
+              <th scope="col">ID</th>
+              <th scope="col">Text</th>
+              <th scope="col">Left</th>
+              <th scope="col">Text tally</th>
+              <th scope="col">Right</th>
+              <th scope="col">Tally 1-4</th>
+              <th scope="col">Brightness</th>
+              <th scope="col">Protocol</th>
+              <th scope="col">Packets</th>
+              <th scope="col">Last seen</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p id="rx-displays-note" class="hint"></p>
+    </section>
+
+    <section class="panel wide">
+      <h2>Received packets</h2>
+      <div class="checks">
+        <span>Packets: <span id="rx-count">0</span>, with problems: <span id="rx-problems">0</span></span>
+        <label><input id="rx_hex_braces" type="checkbox"> {} format</label>
+        <button type="button" id="rx-clear" class="quiet">Clear</button>
+      </div>
+      <ol id="rx-log" class="log rx"></ol>
+    </section>
+  </div>
+
+  <form class="grid" id="view-settings" hidden autocomplete="off">
+    <section class="panel">
+      <h2>Web interface</h2>
+      <div class="checks">
+        <label><input id="acc_web_enabled" type="checkbox"> Web interface on</label>
+        <label><input id="acc_web_login" type="checkbox"> Require login</label>
+      </div>
+      <div class="fields">
+        <label class="grow">User name
+          <input id="acc_web_user" type="text" maxlength="64" autocomplete="off" spellcheck="false">
+        </label>
+        <label class="grow">New password
+          <input id="acc_web_password" type="password" maxlength="128" autocomplete="new-password">
+        </label>
+      </div>
+      <p id="acc-web-password-state" class="hint"></p>
+      <div class="fields" id="acc-current-row" hidden>
+        <label class="grow">Current web password
+          <input id="acc_current_password" type="password" maxlength="128" autocomplete="current-password">
+        </label>
+      </div>
+      <p class="hint">This page and its login. Switching the web interface off ends your access to this page. Switch it on again in the desktop window or start with <code>--web on</code>.</p>
+    </section>
+
+    <section class="panel">
+      <h2>REST API</h2>
+      <div class="checks">
+        <label><input id="acc_api_enabled" type="checkbox"> REST API on</label>
+        <label><input id="acc_api_login" type="checkbox"> Require login</label>
+      </div>
+      <div class="fields">
+        <label class="grow">User name
+          <input id="acc_api_user" type="text" maxlength="64" autocomplete="off" spellcheck="false">
+        </label>
+        <label class="grow">New password
+          <input id="acc_api_password" type="password" maxlength="128" autocomplete="new-password">
+        </label>
+      </div>
+      <p id="acc-api-password-state" class="hint"></p>
+      <p class="hint">For other programs, under <code id="acc-api-base">/api/v1/</code>. The login is HTTP Basic.</p>
+    </section>
+
+    <section class="panel wide">
+      <h2>Apply</h2>
+      <p class="hint">Passwords need at least {{ min_password }} characters. They are stored as a salted hash, never as text. Leave a password field empty to keep the password that is set.</p>
+      <ul id="acc-warnings" class="warnings"></ul>
+      <div class="actions">
+        <button type="submit" id="acc-apply" class="primary">Apply</button>
+      </div>
+      <p id="acc-message" class="hint" aria-live="polite"></p>
+    </section>
+  </form>
+
+  <div class="grid" id="view-about" hidden>
+    <section class="panel wide">
+      <h2>About</h2>
+      <img class="about-logo" src="{{ url_for('static', filename='logo.png') }}" alt="Tally Tapir logo" width="128" height="128">
+      <p class="about-title">Tally Tapir {{ version }}</p>
+      <p>{{ about.SUMMARY }}</p>
+      <p>Author: {{ about.AUTHOR }}<br>License: {{ about.LICENSE_NAME }}. {{ about.COPYRIGHT }}.</p>
+      <p>Source code: <a href="{{ about.HOMEPAGE }}" rel="noopener">{{ about.HOMEPAGE }}</a></p>
+      <p>{{ about.DISCLAIMER }}</p>
+      <pre class="hex license">{{ about.LICENSE_TEXT }}</pre>
+    </section>
+  </div>
+  </main>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+  <script src="{{ url_for('static', filename='settings.js') }}"></script>
+  <script src="{{ url_for('static', filename='receive.js') }}"></script>
+</body>
+</html>

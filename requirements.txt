@@ -1,0 +1,3 @@
+flask>=3.0
+pyserial>=3.5
+tallytapir @ git+https://github.com/MarcusMa-dotcom/tally-tapir-lib@v0.1.0
